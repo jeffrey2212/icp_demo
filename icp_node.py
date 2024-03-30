@@ -17,12 +17,7 @@ class ICPNode:
     self.icp_aligned_pub = rospy.Publisher("/icp_aligned_cloud", PointCloud2, queue_size=10)
     self.kf = KalmanFilter()
     self.odom_subscriber = rospy.Subscriber("/odom", Odometry, self.odom_callback)
-    self.latest_odom_pose = None  # Store the latest odometry
-    self.prev_odom_time = None
-    self.latest_linear_velocity = 0
-    self.latest_angular_velocity = 0
 
-  
   @staticmethod
   def quaternion_to_euler(x, y, z, w):
     """
@@ -36,16 +31,9 @@ class ICPNode:
   
   def odom_callback(self, msg):
     self.latest_odom_pose = msg.pose.pose
-    self.prev_odom_time = msg.header.stamp.to_sec()  # Update the timestamp
-    rospy.loginfo(f"Odometry updated: {self.prev_odom_time}")
-    
-    # Extract linear velocity (v) and angular velocity (omega)
-    v = msg.twist.twist.linear.x  # Assuming forward velocity is along the x-axis
-    omega = msg.twist.twist.angular.z  # Assuming rotational velocity is around the z-axis
-
-    # Store velocities for use in the predict step
-    self.latest_linear_velocity = v
-    self.latest_angular_velocity = omega
+    self.latest_linear_velocity = msg.twist.twist.linear.x
+    self.latest_angular_velocity = msg.twist.twist.angular.z
+    self.prev_odom_time = msg.header.stamp.to_sec()
     
   def point_cloud_callback(self, msg):
     # Convert ROS PointCloud2 to Open3D PointCloud
@@ -75,22 +63,14 @@ class ICPNode:
         rospy.logwarn("No odometry received yet. Skipping filter prediction.")
         return
 
-    # Extract Quaternion
-    q = self.latest_odom_pose.orientation
-    roll, pitch, theta = self.quaternion_to_euler(q.x, q.y, q.z, q.w)
-
-    # Calculate Time Difference (dt)
-    current_time = msg.header.stamp.to_sec()  # Use ICP message timestamp
-    dt = current_time - self.prev_odom_time if self.prev_odom_time is not None else 0.1
+    current_time = msg.header.stamp.to_sec()
+    dt = current_time - self.prev_odom_time
     self.prev_odom_time = current_time
 
-    # Assuming self.latest_linear_velocity and self.latest_angular_velocity have been set in the odom_callback
+    # 4. Kalman Filter
     v = self.latest_linear_velocity
     omega = self.latest_angular_velocity
-
-    # 4. Kalman Filter
-    print(f"Before predict -- v: {v}, omega: {omega}, dt: {dt}")
-    self.kf.predict([v, omega], dt)  # Now we pass both velocity and angular velocity along with dt
+    self.kf.predict(v, omega, dt)  # Now we pass both velocity and angular velocity along with dt
     self.kf.update(icp_pose) 
     refined_pose = self.kf.get_state() 
 
