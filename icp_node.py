@@ -5,7 +5,7 @@ from sensor_msgs.msg import PointCloud2
 import open3d as o3d
 import numpy as np
 from rospy.numpy_msg import numpy_msg
-from nav_msgs import Odometry 
+from nav_msgs.msg import Odometry 
 import tf.transformations as tft
 
 from kalman_filters import KalmanFilter 
