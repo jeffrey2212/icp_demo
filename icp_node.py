@@ -89,6 +89,7 @@ class ICPNode:
     omega = self.latest_angular_velocity
 
     # 4. Kalman Filter
+    print(f"Before predict -- v: {v}, omega: {omega}, dt: {dt}")
     self.kf.predict([v, omega], dt)  # Now we pass both velocity and angular velocity along with dt
     self.kf.update(icp_pose) 
     refined_pose = self.kf.get_state() 

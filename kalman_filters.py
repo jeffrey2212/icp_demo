@@ -18,26 +18,37 @@ class KalmanFilter:
         self.R = np.diag([0.5, 0.5, np.deg2rad(10)])  # Adjust based on LiDAR accuracy
         
     def predict(self, control, dt):
+        print("Entering predict method...")  # Initial entry point
         v, omega = control
-        theta = self.x[2]
+        print(f"Control input shapes -- v: {np.shape(v)}, omega: {np.shape(omega)}, dt: {np.shape(dt)}")
 
+        # Assuming your state vector self.x is [x, y, theta].T
+        print(f"Current state shape: {self.x.shape}")
+        
+        theta = self.x[2]
         # Calculate the Jacobian of the motion model with respect to the state
         F = np.array([
             [1, 0, -v * dt * np.sin(theta)],
             [0, 1, v * dt * np.cos(theta)],
             [0, 0, 1]
         ])
+        print(f"F matrix shape: {F.shape}")
 
         # Update the state estimate using the motion model
-        # Note: This simplistic model assumes direct influence of v and omega
         dx = v * dt * np.cos(theta)
         dy = v * dt * np.sin(theta)
         dtheta = omega * dt
 
-        self.x += np.array([dx, dy, dtheta]).reshape(-1, 1)
+        delta = np.array([dx, dy, dtheta]).reshape(-1, 1)
+        print(f"Delta shape: {delta.shape}")
+
+        self.x += delta
+        print(f"Updated state shape: {self.x.shape}")
 
         # Update the state covariance matrix
         self.P = F @ self.P @ F.T + self.Q
+        print(f"Updated P matrix shape: {self.P.shape}")
+
         
     def update(self, z):
         """
