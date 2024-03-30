@@ -38,17 +38,22 @@ class KalmanFilter:
         self.P = F @ self.P @ F.T + self.Q
     
     def update(self, z):
-        """
-        Update the state estimate with a measurement z.
-        z: measurement vector [x, y, theta]
-        """
-        y = z - (self.H @ self.x)  # Measurement residual
-        S = self.H @ self.P @ self.H.T + self.R  # Residual covariance
-        K = self.P @ self.H.T @ np.linalg.inv(S)  # Kalman gain
-        
-        self.x += K @ y  # Update state estimate
-        self.P = (np.eye(3) - K @ self.H) @ self.P  # Update covariance estimate
-        
+        # Measurement residual
+        y = z - (self.H @ self.x)
+
+        # Residual covariance
+        S = self.H @ self.P @ self.H.T + self.R
+
+        # Kalman Gain
+        K = self.P @ self.H.T @ np.linalg.inv(S)
+
+        # Update state estimate
+        self.x += K @ y.reshape(-1, 1)  # Ensure y is a column vector
+
+        # Update covariance estimate
+        I = np.eye(len(self.x))  # Identity matrix of size len(self.x)
+        self.P = (I - K @ self.H) @ self.P
+    
     def get_state(self):
         """
         Returns the current state estimate.
