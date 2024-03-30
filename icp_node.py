@@ -10,17 +10,6 @@ import tf.transformations as tft
 
 from kalman_filters import KalmanFilter 
 
-@staticmethod
-def quaternion_to_euler(x, y, z, w):
-    """
-    Converts a quaternion (x, y, z, w) into Euler angles (roll, pitch, yaw)
-    """
-    euler = tft.euler_from_quaternion([x, y, z, w])
-    roll = euler[0]
-    pitch = euler[1]
-    yaw = euler[2]
-    return roll, pitch, yaw 
-
 class ICPNode:
   def __init__(self):
     rospy.init_node('icp_node', anonymous=True)
@@ -33,6 +22,18 @@ class ICPNode:
     self.latest_linear_velocity = 0
     self.latest_angular_velocity = 0
 
+  
+  @staticmethod
+  def quaternion_to_euler(x, y, z, w):
+    """
+    Converts a quaternion (x, y, z, w) into Euler angles (roll, pitch, yaw)
+    """
+    euler = tft.euler_from_quaternion([x, y, z, w])
+    roll = euler[0]
+    pitch = euler[1]
+    yaw = euler[2]
+    return roll, pitch, yaw 
+  
   def odom_callback(self, msg):
     self.latest_odom_pose = msg.pose.pose
     # Extract linear velocity (v) and angular velocity (omega)
@@ -73,7 +74,7 @@ class ICPNode:
 
     # Extract Quaternion
     q = self.latest_odom_pose.orientation
-    roll, pitch, theta = quaternion_to_euler(q.x, q.y, q.z, q.w)
+    roll, pitch, theta = self.quaternion_to_euler(q.x, q.y, q.z, q.w)
 
     # Calculate Time Difference (dt)
     current_time = msg.header.stamp.to_sec()  # Use ICP message timestamp
@@ -116,7 +117,9 @@ class ICPNode:
     aligned_cloud = pc2.create_cloud_xyz32(header, aligned_points)
 
     # Publish the aligned cloud
+    rospy.loginfo("Publishing aligned point cloud")
     self.icp_aligned_pub.publish(aligned_cloud)
+    rospy.loginfo("Aligned point cloud published")
 
 if __name__ == '__main__':
   icp_node = ICPNode()
