@@ -17,24 +17,26 @@ class KalmanFilter:
         # Measurement noise covariance
         self.R = np.diag([0.5, 0.5, np.deg2rad(10)])  # Adjust based on LiDAR accuracy
         
-    def predict(self, u):
-        """
-        Predict the state and state covariance.
-        u: control input [v, omega] (velocity and angular velocity)
-        """
-        dt = 1.0  # Time step. Adjust as needed.
-        
-        # State transition model
-        F = np.array([[1, 0, -u[0]*np.sin(self.x[2])*dt],
-                      [0, 1, u[0]*np.cos(self.x[2])*dt],
-                      [0, 0, 1]])
-        
-        # Update state
-        self.x[0] += u[0] * np.cos(self.x[2]) * dt
-        self.x[1] += u[0] * np.sin(self.x[2]) * dt
-        self.x[2] += u[1] * dt
-        
-        # Update covariance
+    def predict(self, control, dt):
+        v, omega = control
+        theta = self.x[2]
+
+        # Calculate the Jacobian of the motion model with respect to the state
+        F = np.array([
+            [1, 0, -v * dt * np.sin(theta)],
+            [0, 1, v * dt * np.cos(theta)],
+            [0, 0, 1]
+        ])
+
+        # Update the state estimate using the motion model
+        # Note: This simplistic model assumes direct influence of v and omega
+        dx = v * dt * np.cos(theta)
+        dy = v * dt * np.sin(theta)
+        dtheta = omega * dt
+
+        self.x += np.array([dx, dy, dtheta]).reshape(-1, 1)
+
+        # Update the state covariance matrix
         self.P = F @ self.P @ F.T + self.Q
         
     def update(self, z):
