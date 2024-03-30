@@ -54,10 +54,12 @@ class ICPNode:
 
        # Kalman Filter Integration
     # 1. Extract ICP Pose 
-    icp_pose = np.array([icp_result.transformation[0, 3], 
-                         icp_result.transformation[1, 3],
-                         np.arctan2(icp_result.transformation[1,0], icp_result.transformation[0,0])])  # Adjust indices if needed
-
+    # Ensure icp_pose is a column vector before passing to update
+    icp_pose = np.array([[icp_result.transformation[0, 3]],
+                         [icp_result.transformation[1, 3]],
+                         [np.arctan2(icp_result.transformation[1, 0], icp_result.transformation[0, 0])]])
+    self.kf.update(icp_pose)  # Pass icp_pose to the update method
+    
     # 2. Get Odometry Data
     if self.latest_odom_pose is None or self.prev_odom_time is None:
         rospy.logwarn("No odometry received yet. Skipping filter prediction.")
