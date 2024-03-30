@@ -36,6 +36,9 @@ class ICPNode:
   
   def odom_callback(self, msg):
     self.latest_odom_pose = msg.pose.pose
+    self.prev_odom_time = msg.header.stamp.to_sec()  # Update the timestamp
+    rospy.loginfo(f"Odometry updated: {self.prev_odom_time}")
+    
     # Extract linear velocity (v) and angular velocity (omega)
     v = msg.twist.twist.linear.x  # Assuming forward velocity is along the x-axis
     omega = msg.twist.twist.angular.z  # Assuming rotational velocity is around the z-axis
