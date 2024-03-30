@@ -8,7 +8,7 @@ class ScanToPointCloud():
     def __init__(self):
         rospy.init_node('scan_to_pointcloud')
         self.laser_projector = LaserProjection() 
-        self.pc2_pub = rospy.Publisher('/scan_pc2', PointCloud2, queue_size=10)
+        self.pc2_pub = rospy.Publisher('/scan_to_pointcloud', PointCloud2, queue_size=10)
         self.laser_sub = rospy.Subscriber('/scan', LaserScan, self.laser_callback)
 
     def laser_callback(self, msg):
