@@ -49,7 +49,7 @@ class ICPNode:
 
     # Setting the target cloud
     # For ICP trial run, we will set the target cloud to be the same as the source cloud
-    #target = source
+    target = source
 
     # Prepare the ICP configuration
     threshold = 0.02 # Set this to an appropriate value
