@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import rospy
 import sensor_msgs.point_cloud2 as pc2
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud2, LaserScan
+from laser_geometry import LaserProjection 
 import open3d as o3d
+from geometry_msgs.msg import PoseStamped
 import numpy as np
-from rospy.numpy_msg import numpy_msg
 from nav_msgs.msg import Odometry 
 import tf.transformations as tft
 
@@ -13,11 +14,16 @@ from kalman_filters import KalmanFilter
 class ICPNode:
   def __init__(self):
     rospy.init_node('icp_node', anonymous=True)
-    self.pc_subscriber = rospy.Subscriber("/scan_to_pointcloud", PointCloud2, self.point_cloud_callback)
-    self.icp_aligned_pub = rospy.Publisher("/icp_aligned_cloud", PointCloud2, queue_size=10)
-    self.kf = KalmanFilter()
+    self.laser_sub = rospy.Subscriber('/scan', LaserScan, self.laser_callback)
+    self.laser_projector = LaserProjection()
     self.odom_subscriber = rospy.Subscriber("/odom", Odometry, self.odom_callback)
-
+    self.kf = KalmanFilter()
+    self.refined_pose_publisher = rospy.Publisher('/refined_pose', PoseStamped, queue_size=10)
+    self.latest_odom_pose = None  
+    self.latest_linear_velocity = None 
+    self.latest_angular_velocity = None
+    self.prev_odom_time = None 
+        
   @staticmethod
   def quaternion_to_euler(x, y, z, w):
     """
@@ -35,15 +41,15 @@ class ICPNode:
     self.latest_angular_velocity = msg.twist.twist.angular.z
     self.prev_odom_time = msg.header.stamp.to_sec()
     
-  def point_cloud_callback(self, msg):
-    # Convert ROS PointCloud2 to Open3D PointCloud
-    pc_array = pc2.read_points_list(msg, field_names=("x", "y", "z"), skip_nans=True)
+  def laser_callback(self, msg):
+    cloud_out = self.laser_projector.projectLaser(msg)  
+    pc_array = pc2.read_points_list(cloud_out, field_names=("x", "y", "z"), skip_nans=True)
     source = o3d.geometry.PointCloud()
     source.points = o3d.utility.Vector3dVector(np.array(pc_array))
 
     # Setting the target cloud
     # For ICP trial run, we will set the target cloud to be the same as the source cloud
-    target = source
+    #target = source
 
     # Prepare the ICP configuration
     threshold = 0.02 # Set this to an appropriate value
@@ -77,35 +83,39 @@ class ICPNode:
     refined_pose = self.kf.get_state() 
 
     # 5. Publish Refined Pose
-    x = refined_pose[0]
-    y = refined_pose[1]
-    theta = refined_pose[2]
+    # x = refined_pose[0]
+    # y = refined_pose[1]
+    # theta = refined_pose[2]
 
-    # Construct Rotation Matrix
-    R = o3d.geometry.get_rotation_matrix_from_xyz((0, 0, theta))  
+    # # Construct Rotation Matrix
+    # R = o3d.geometry.get_rotation_matrix_from_xyz((0, 0, theta))  
 
-    # Construct Translation Vector
-    T = np.array([x, y, 0]).reshape(3, 1) 
+    # # Construct Translation Vector
+    # T = np.array([x, y, 0]).reshape(3, 1) 
 
-    # Combine Rotation and Translation
-    refined_transformation = np.eye(4)  
-    refined_transformation[:3, :3] = R 
-    refined_transformation[:3, 3] = T.reshape(3) 
+    # # Combine Rotation and Translation
+    # refined_transformation = np.eye(4)  
+    # refined_transformation[:3, :3] = R 
+    # refined_transformation[:3, 3] = T.reshape(3) 
 
-    # Transform the source cloud
-    source.transform(refined_transformation) 
-    # Transform the source cloud to the target frame
-    #source.transform(icp_result.transformation)
+    # # Transform the source cloud
+    # source.transform(refined_transformation) 
 
-    # Convert the aligned Open3D PointCloud back to ROS PointCloud2
-    aligned_points = np.asarray(source.points)
-    header = msg.header
-    aligned_cloud = pc2.create_cloud_xyz32(header, aligned_points)
+    # # Convert the aligned Open3D PointCloud back to ROS PointCloud2
+    # aligned_points = np.asarray(source.points)
+    # header = msg.header
+    # aligned_cloud = pc2.create_cloud_xyz32(header, aligned_points)
 
-    # Publish the aligned cloud
-    rospy.loginfo("Publishing aligned point cloud")
-    self.icp_aligned_pub.publish(aligned_cloud)
-    rospy.loginfo("Aligned point cloud published")
+    # # Publish the aligned cloud
+    # # rospy.loginfo("Publishing aligned point cloud")
+    # # self.icp_aligned_pub.publish(aligned_cloud)
+    # # rospy.loginfo("Aligned point cloud published")
+    pose_msg = PoseStamped()
+    pose_msg.header.stamp = msg.header.stamp  # Synchronize timestamp
+    pose_msg.pose.position.x = refined_pose[0]
+    pose_msg.pose.position.y = refined_pose[1]
+    # ... Set orientation based on refined_pose[2] ... 
+    self.refined_pose_publisher.publish(pose_msg)
 
 if __name__ == '__main__':
   icp_node = ICPNode()

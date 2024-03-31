@@ -47,10 +47,10 @@ class KalmanFilter:
         # Kalman Gain
         K = self.P @ self.H.T @ np.linalg.inv(S)
 
-        print(f"K shape: {K.shape}")
-        print(f"y shape: {y.shape}")
+        #print(f"K shape: {K.shape}")
+        #print(f"y shape: {y.shape}")
         y = y.reshape(-1, 1)  # Ensure y is a column vector
-        print(f"y reshaped: {y.shape}")
+        #print(f"y reshaped: {y.shape}")
 
         # Attempt the update
         self.x += K @ y  # This line is causing the error
